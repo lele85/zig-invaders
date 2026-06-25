@@ -49,6 +49,16 @@ const typo = struct {
     const xxl = Typography{ .size = 56, .line = 64 };
 };
 
+const FontManager = struct {
+    font: rl.Font,
+
+    fn init() !FontManager {
+        return FontManager{
+            .font = try rl.loadFont("assets/font.ttf"), // load your font here
+        };
+    }
+};
+
 const Rect = struct {
     x: f32,
     y: f32,
@@ -385,42 +395,62 @@ fn drawEnemies(state: *const PlayingState) void {
 }
 
 fn drawHUD(state: *const PlayingState) void {
-    rl.drawText(
+    rl.drawTextEx(
+        fm.font,
         rl.textFormat("Score: %d", .{state.score}),
-        @intFromFloat(Screen.padding),
-        @intFromFloat(Screen.padding),
-        @intFromFloat(typo.base.size),
+        rl.Vector2{ .x = Screen.padding, .y = Screen.padding },
+        typo.base.size,
+        4,
         rl.Color.green,
     );
-    rl.drawText(
+    rl.drawTextEx(
+        fm.font,
         rl.textFormat("Lives: %d", .{state.player.lives}),
-        @intFromFloat(Screen.padding),
-        @intFromFloat(Screen.padding + typo.base.line),
-        @intFromFloat(typo.base.size),
+        rl.Vector2{ .x = Screen.padding, .y = Screen.padding + typo.base.line },
+        typo.base.size,
+        4,
         rl.Color.green,
     );
 }
 
 fn drawStaticScreen(title: [:0]const u8, subtitle: [:0]const u8) void {
     // center title
-    const title_w = @as(f32, @floatFromInt(rl.measureText(title, @intFromFloat(typo.xxl.size))));
-    const subtitle_w = @as(f32, @floatFromInt(rl.measureText(subtitle, @intFromFloat(typo.base.size))));
+    const title_w = rl.measureTextEx(
+        fm.font,
+        title,
+        typo.xxl.size,
+        4,
+    ).x;
+    const subtitle_w = rl.measureTextEx(
+        fm.font,
+        subtitle,
+        typo.base.size,
+        4,
+    ).x;
 
     const block_h = typo.xxl.line + typo.base.line;
     const block_y = (Screen.h - block_h) / 2;
 
-    rl.drawText(
+    rl.drawTextEx(
+        fm.font,
         title,
-        @intFromFloat((Screen.w - title_w) / 2),
-        @intFromFloat(block_y),
-        @intFromFloat(typo.xxl.size),
+        rl.Vector2{
+            .x = (Screen.w - title_w) / 2,
+            .y = block_y,
+        },
+        typo.xxl.size,
+        4,
         rl.Color.green,
     );
-    rl.drawText(
+    rl.drawTextEx(
+        fm.font,
         subtitle,
-        @intFromFloat((Screen.w - subtitle_w) / 2),
-        @intFromFloat(block_y + typo.xxl.line),
-        @intFromFloat(typo.base.size),
+        rl.Vector2{
+            .x = (Screen.w - subtitle_w) / 2,
+            .y = block_y + typo.xxl.line,
+        },
+        typo.base.size,
+        4,
         rl.Color.green,
     );
 }
@@ -434,6 +464,8 @@ fn checkCollision(a: *const Rect, b: *const Rect) bool {
     // none were true → they overlap
     return true;
 }
+
+var fm: FontManager = undefined;
 
 pub fn main(init: std.process.Init) !void {
     var prng: std.Random.DefaultPrng = .init(blk: {
@@ -457,6 +489,8 @@ pub fn main(init: std.process.Init) !void {
         "Zig Invaders",
     );
     defer rl.closeWindow();
+    fm = try FontManager.init();
+
     rl.setTargetFPS(60);
 
     var renderer = try Renderer.init();

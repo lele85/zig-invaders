@@ -148,6 +148,7 @@ const Scene = union(enum) {
     playing: PlayingState,
     game_over,
     win,
+    high_score,
 };
 
 fn pointsForY(y: f32) usize {
@@ -413,6 +414,46 @@ fn drawHUD(state: *const PlayingState) void {
     );
 }
 
+fn getCenter(text: [:0]const u8) rl.Vector2 {
+    const measured = rl.measureTextEx(
+        fm.font,
+        text,
+        typo.base.size,
+        4,
+    );
+    return .{
+        .x = (Screen.w - measured.x) / 2,
+        .y = (Screen.h - measured.y) / 2,
+    };
+}
+
+fn drawHighScore() void {
+    const text =
+        \\+---------+-------+-------+
+        \\| Level   | Score | Lives |
+        \\+---------+-------+-------+
+        \\| 1       |  9999 |     3 |
+        \\| 2       |  8000 |     2 |
+        \\| 3       |  7500 |     2 |
+        \\| 4       |  6200 |     1 |
+        \\| 5       |  5100 |     1 |
+        \\| 6       |  4800 |     1 |
+        \\| 7       |  3300 |     0 |
+        \\| 8       |  2100 |     0 |
+        \\| 9       |  1500 |     0 |
+        \\| 10      |   900 |     0 |
+        \\+---------+-------+-------+
+    ;
+    rl.drawTextEx(
+        fm.font,
+        text,
+        getCenter(text),
+        typo.base.size,
+        4,
+        rl.Color.green,
+    );
+}
+
 fn drawStaticScreen(title: [:0]const u8, subtitle: [:0]const u8) void {
     // center title
     const title_w = rl.measureTextEx(
@@ -474,7 +515,7 @@ pub fn main(init: std.process.Init) !void {
         break :blk seed;
     });
     const rand = prng.random();
-    var scene: Scene = .menu;
+    var scene: Scene = .high_score;
 
     rl.initAudioDevice();
     defer rl.closeAudioDevice();
@@ -562,6 +603,7 @@ pub fn main(init: std.process.Init) !void {
                     } };
                 }
             },
+            .high_score => {},
         }
 
         renderer.beginScene();
@@ -594,6 +636,9 @@ pub fn main(init: std.process.Init) !void {
                     "YOU WIN",
                     "Press Enter to RESTART",
                 );
+            },
+            .high_score => {
+                drawHighScore();
             },
         }
         renderer.endScene();

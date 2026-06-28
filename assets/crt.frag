@@ -9,19 +9,33 @@ uniform float time;
 
 out vec4 finalColor;
 
+// ============ TUNABLES ============
+const float CURVATURE  = 0.018;
+const float SCANLINES  = 120.0;
+const float SCAN_DEPTH = 0.6;
+const float BLOOM      = 0.5;
+const float VIGNETTE   = 0.3;
+const float FLICKER    = 0.10;
+// ==================================
+
+vec2 curveUV(vec2 uv) {
+    uv = uv * 2.0 - 1.0;
+    float ax = abs(uv.x) / 3.0;
+    float ay = abs(uv.y) / 3.0;
+    uv.x *= 1.0 + (ay * ay) * CURVATURE * 1.25;
+    uv.y *= 1.0 + (ax * ax) * CURVATURE * 4;
+    return uv * 0.5 + 0.5;
+}
+
 void main() {
-    vec2 uv = fragTexCoord;
-    vec2 px = 1.0 / resolution; // one pixel in UV space
+    vec2 uv = curveUV(fragTexCoord);
 
-    // Base sample with chromatic aberration
-    float ab = 0.003;
-    vec4 col;
-    col.r = texture(texture0, vec2(uv.x + ab, uv.y)).r;
-    col.g = texture(texture0, uv).g;
-    col.b = texture(texture0, vec2(uv.x - ab, uv.y)).b;
-    col.a = texture(texture0, uv).a;  // was col.a = 1.0;
+    vec2 px = 1.0 / vec2(textureSize(texture0, 0));
 
-    // Glow — sample neighbors and add a brightened average
+    // Clean single sample — NO chromatic aberration (monochrome tube)
+    vec4 col = texture(texture0, uv);
+
+    // Glow / phosphor halation
     vec3 glow = vec3(0.0);
     glow += texture(texture0, uv + vec2( px.x * 2.0,  0.0)).rgb;
     glow += texture(texture0, uv + vec2(-px.x * 2.0,  0.0)).rgb;
@@ -32,22 +46,21 @@ void main() {
     glow += texture(texture0, uv + vec2( 0.0,  px.y * 4.0)).rgb;
     glow += texture(texture0, uv + vec2( 0.0, -px.y * 4.0)).rgb;
     glow /= 8.0;
-    // Tint the glow green like a phosphor monitor
-    col.rgb += glow * vec3(0.6, 0.9, 0.5) * 0.8;
+    col.rgb += glow * vec3(0.6, 0.9, 0.5) * BLOOM;
 
-    // Soft scanlines — sine wave instead of hard bands
-    float scan = sin(uv.y * resolution.y * 3.14159) * 0.5 + 0.5;
-    col.rgb *= 0.88 + 0.12 * scan;
-
+    // Intensity-aware scanlines
+    float lum  = dot(col.rgb, vec3(0.299, 0.587, 0.114));
+    float beam = mix(0.16, 0.34, clamp(lum, 0.0, 1.0));
+    float pos  = fract(uv.y * SCANLINES) - 0.5;
+    float scan = exp(-(pos * pos) / (2.0 * beam * beam));
+    col.rgb *= mix(1.0, scan, SCAN_DEPTH);
 
     // Vignette
-    float dx = uv.x - 0.5;
-    float dy = uv.y - 0.5;
-    float vig = max(0.6, 1.0 - (dx * dx + dy * dy) * 1.2);
-    col.rgb *= vig;
+    vec2 vd = uv - 0.5;
+    col.rgb *= clamp(1.0 - dot(vd, vd) * VIGNETTE, 0.0, 1.0);
 
     // Flicker
-    col.rgb *= max(0.9, 0.925 + 0.05 * sin(time * 60.0));
+    col.rgb *= 1.0 - FLICKER + FLICKER * sin(time * 120.0);
 
     finalColor = col * fragColor;
 }

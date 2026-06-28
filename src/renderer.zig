@@ -24,13 +24,13 @@ pub const Renderer = struct {
         const res_loc = rl.getShaderLocation(crt_shader, "resolution");
         const time_loc = rl.getShaderLocation(crt_shader, "time");
 
-        const render_w = @as(f32, @floatFromInt(rl.getRenderWidth()));
-        const render_h = @as(f32, @floatFromInt(rl.getRenderHeight()));
-        const res_val = [2]f32{ render_w / Screen.w * Monitor.w, render_h / Screen.h * Monitor.h };
+        const res_val = [2]f32{ Screen.w, Screen.h }; // 800, 600 — the actual render target size
         rl.setShaderValue(crt_shader, res_loc, &res_val, rl.ShaderUniformDataType.vec2);
+        const render_target = try rl.loadRenderTexture(@intFromFloat(Screen.w), @intFromFloat(Screen.h));
 
+        rl.setTextureFilter(render_target.texture, rl.TextureFilter.point);
         return Renderer{
-            .render_target = try rl.loadRenderTexture(@intFromFloat(Screen.w), @intFromFloat(Screen.h)),
+            .render_target = render_target,
             .bg_texture = try rl.loadTexture("assets/monitor.png"),
             .crt_shader = crt_shader,
             .time_loc = time_loc,

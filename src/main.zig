@@ -515,7 +515,7 @@ pub fn main(init: std.process.Init) !void {
         break :blk seed;
     });
     const rand = prng.random();
-    var scene: Scene = .high_score;
+    var scene: Scene = .menu;
 
     rl.initAudioDevice();
     defer rl.closeAudioDevice();

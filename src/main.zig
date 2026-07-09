@@ -56,20 +56,6 @@ const typo = struct {
     const xxl = Typography{ .size = 56, .line = 64 };
 };
 
-const FontManager = struct {
-    font: rl.Font,
-
-    fn init() !FontManager {
-        return FontManager{
-            .font = try rl.loadFont("assets/font.ttf"), // load your font here
-        };
-    }
-
-    fn deinit(self: *const FontManager) void {
-        rl.unloadFont(self.font);
-    }
-};
-
 const Rect = struct {
     x: f32,
     y: f32,
@@ -406,9 +392,9 @@ fn drawEnemies(state: *const PlayingState) void {
     }
 }
 
-fn drawHUD(state: *const PlayingState) void {
+fn drawHUD(state: *const PlayingState, font: *const rl.Font) void {
     rl.drawTextEx(
-        fm.font,
+        font.*,
         rl.textFormat("Score: %d", .{state.score}),
         rl.Vector2{ .x = Screen.padding, .y = Screen.padding },
         typo.base.size,
@@ -416,7 +402,7 @@ fn drawHUD(state: *const PlayingState) void {
         rl.Color.green,
     );
     rl.drawTextEx(
-        fm.font,
+        font.*,
         rl.textFormat("Lives: %d", .{state.player.lives}),
         rl.Vector2{ .x = Screen.padding, .y = Screen.padding + typo.base.line },
         typo.base.size,
@@ -425,9 +411,9 @@ fn drawHUD(state: *const PlayingState) void {
     );
 }
 
-fn getCenter(text: [:0]const u8) rl.Vector2 {
+fn getCenter(text: [:0]const u8, font: *const rl.Font) rl.Vector2 {
     const measured = rl.measureTextEx(
-        fm.font,
+        font.*,
         text,
         typo.base.size,
         4,
@@ -438,7 +424,7 @@ fn getCenter(text: [:0]const u8) rl.Vector2 {
     };
 }
 
-fn drawHighScore() void {
+fn drawHighScore(font: *const rl.Font) void {
     const text =
         \\+---------+-------+-------+
         \\| Level   | Score | Lives |
@@ -456,25 +442,29 @@ fn drawHighScore() void {
         \\+---------+-------+-------+
     ;
     rl.drawTextEx(
-        fm.font,
+        font.*,
         text,
-        getCenter(text),
+        getCenter(text, font),
         typo.base.size,
         4,
         rl.Color.green,
     );
 }
 
-fn drawStaticScreen(title: [:0]const u8, subtitle: [:0]const u8) void {
+fn drawStaticScreen(
+    title: [:0]const u8,
+    subtitle: [:0]const u8,
+    font: *const rl.Font,
+) void {
     // center title
     const title_w = rl.measureTextEx(
-        fm.font,
+        font.*,
         title,
         typo.xxl.size,
         4,
     ).x;
     const subtitle_w = rl.measureTextEx(
-        fm.font,
+        font.*,
         subtitle,
         typo.base.size,
         4,
@@ -484,7 +474,7 @@ fn drawStaticScreen(title: [:0]const u8, subtitle: [:0]const u8) void {
     const block_y = (Screen.h - block_h) / 2;
 
     rl.drawTextEx(
-        fm.font,
+        font.*,
         title,
         rl.Vector2{
             .x = (Screen.w - title_w) / 2,
@@ -495,7 +485,7 @@ fn drawStaticScreen(title: [:0]const u8, subtitle: [:0]const u8) void {
         rl.Color.green,
     );
     rl.drawTextEx(
-        fm.font,
+        font.*,
         subtitle,
         rl.Vector2{
             .x = (Screen.w - subtitle_w) / 2,
@@ -516,8 +506,6 @@ fn checkCollision(a: *const Rect, b: *const Rect) bool {
     // none were true → they overlap
     return true;
 }
-
-var fm: FontManager = undefined;
 
 pub fn main(init: std.process.Init) !void {
     var prng: std.Random.DefaultPrng = .init(blk: {
@@ -542,8 +530,8 @@ pub fn main(init: std.process.Init) !void {
     );
     defer rl.closeWindow();
 
-    fm = try FontManager.init();
-    defer fm.deinit();
+    const font = try rl.loadFont("assets/font.ttf");
+    defer rl.unloadFont(font);
 
     rl.setTargetFPS(60);
 
@@ -622,13 +610,18 @@ pub fn main(init: std.process.Init) !void {
         renderer.beginScene();
         switch (scene) {
             .menu => {
-                drawStaticScreen("ZIG INVADERS", "Press Enter to START");
+                drawStaticScreen(
+                    "ZIG INVADERS",
+                    "Press Enter to START",
+                    &font,
+                );
             },
             .level => |level_data| {
                 const next_level = level_data.level + 1;
                 drawStaticScreen(
                     rl.textFormat("Level %d", .{next_level}),
                     "Press Enter to START",
+                    &font,
                 );
             },
             .playing => |*ps| {
@@ -636,22 +629,24 @@ pub fn main(init: std.process.Init) !void {
                 drawPlayerBullets(ps);
                 drawEnemies(ps);
                 drawEnemyBullets(ps);
-                drawHUD(ps);
+                drawHUD(ps, &font);
             },
             .game_over => {
                 drawStaticScreen(
                     "GAME OVER",
                     "Press Enter to RESTART",
+                    &font,
                 );
             },
             .win => {
                 drawStaticScreen(
                     "YOU WIN",
                     "Press Enter to RESTART",
+                    &font,
                 );
             },
             .high_score => {
-                drawHighScore();
+                drawHighScore(&font);
             },
         }
         renderer.endScene();

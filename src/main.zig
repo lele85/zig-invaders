@@ -6,15 +6,20 @@ const Screen = @import("renderer.zig").Screen;
 const Pool = @import("utils.zig").Pool;
 const boundedArray = @import("utils.zig").boundedArray;
 
+// Level
+const level_count = 5;
+
+// Player
 const player_w: f32 = 60;
 const player_h: f32 = 30;
 const player_speed: f32 = 200;
 
-const level_count = 5;
-
+// Bullet
 const bullet_w: f32 = 4;
 const bullet_h: f32 = 20;
 const bullet_speed: f32 = 500;
+
+// Player Bullets
 const player_bullet_max = 10;
 const player_bullet_max_level = boundedArray(
     usize,
@@ -22,6 +27,7 @@ const player_bullet_max_level = boundedArray(
     [level_count]usize{ 10, 6, 3, 2, 1 },
 );
 
+// Enemy
 const enemy_w: f32 = 32;
 const enemy_h: f32 = 32;
 const enemy_start_y: f32 = 80;
@@ -36,6 +42,7 @@ const enemy_shoot_max: f32 = 1;
 const enemy_step_size: f32 = 24;
 const enemy_step_down: f32 = enemy_h + enemy_padding; // how much they drop when hitting a wall
 
+// Enemy movement
 const heartbeat_min: f32 = 0.2; // fastest speed, late game
 const heartbeat_range: f32 = 0.8; // how much slower at start
 
@@ -56,6 +63,10 @@ const FontManager = struct {
         return FontManager{
             .font = try rl.loadFont("assets/font.ttf"), // load your font here
         };
+    }
+
+    fn deinit(self: *const FontManager) void {
+        rl.unloadFont(self.font);
     }
 };
 
@@ -530,7 +541,9 @@ pub fn main(init: std.process.Init) !void {
         "Zig Invaders",
     );
     defer rl.closeWindow();
+
     fm = try FontManager.init();
+    defer fm.deinit();
 
     rl.setTargetFPS(60);
 

@@ -21,6 +21,8 @@ pub const Renderer = struct {
 
     pub fn init() !Renderer {
         const crt_shader = try rl.loadShader(null, "assets/crt.frag");
+        errdefer rl.unloadShader(crt_shader);
+
         const res_loc = rl.getShaderLocation(crt_shader, "resolution");
         const time_loc = rl.getShaderLocation(crt_shader, "time");
 
@@ -30,6 +32,7 @@ pub const Renderer = struct {
             @intFromFloat(Screen.w),
             @intFromFloat(Screen.h),
         );
+        errdefer rl.unloadRenderTexture(render_target);
 
         rl.setTextureFilter(render_target.texture, rl.TextureFilter.point);
         return Renderer{

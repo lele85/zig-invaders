@@ -1,4 +1,5 @@
 const rl = @import("raylib");
+const std = @import("std");
 
 pub const Screen = struct {
     pub const w: f32 = 800;
@@ -19,37 +20,41 @@ pub const Renderer = struct {
     crt_shader: rl.Shader,
     time_loc: i32,
 
-    pub fn init() !Renderer {
-        const crt_shader = try rl.loadShader(null, "assets/crt.frag");
-        errdefer rl.unloadShader(crt_shader);
+    pub fn init() Renderer {
+        const crt_shader = rl.loadShader(null, "assets/crt.frag") catch |err| {
+            std.debug.panic("[FATAL ERROR] - Failed to load shader - assets/crt.frag - {}", .{err});
+        };
+        const render_target = rl.loadRenderTexture(
+            @intFromFloat(Screen.w),
+            @intFromFloat(Screen.h),
+        ) catch |err| {
+            std.debug.panic("[FATAL ERROR] - Failed to load render target - {}", .{err});
+        };
+        const bg_texture = rl.loadTexture("assets/monitor.png") catch |err| {
+            std.debug.panic("[FATAL ERROR] - Failed to load texture - assets/monitor.png - {}", .{err});
+        };
 
         const res_loc = rl.getShaderLocation(crt_shader, "resolution");
         const time_loc = rl.getShaderLocation(crt_shader, "time");
-
         const res_val = [2]f32{ Screen.w, Screen.h }; // 800, 600 — the actual render target size
         rl.setShaderValue(crt_shader, res_loc, &res_val, rl.ShaderUniformDataType.vec2);
-        const render_target = try rl.loadRenderTexture(
-            @intFromFloat(Screen.w),
-            @intFromFloat(Screen.h),
-        );
-        errdefer rl.unloadRenderTexture(render_target);
 
         rl.setTextureFilter(render_target.texture, rl.TextureFilter.point);
         return Renderer{
             .render_target = render_target,
-            .bg_texture = try rl.loadTexture("assets/monitor.png"),
+            .bg_texture = bg_texture,
             .crt_shader = crt_shader,
             .time_loc = time_loc,
         };
     }
 
-    pub fn deinit(self: *Renderer) void {
+    pub fn deinit(self: *const Renderer) void {
         rl.unloadRenderTexture(self.render_target);
         rl.unloadTexture(self.bg_texture);
         rl.unloadShader(self.crt_shader);
     }
 
-    pub fn beginScene(self: *Renderer) void {
+    pub fn beginScene(self: *const Renderer) void {
         rl.beginTextureMode(self.render_target);
         rl.clearBackground(rl.Color{
             .r = 0,
@@ -59,11 +64,11 @@ pub const Renderer = struct {
         });
     }
 
-    pub fn endScene(_: *Renderer) void {
+    pub fn endScene(_: *const Renderer) void {
         rl.endTextureMode();
     }
 
-    pub fn composite(self: *Renderer) void {
+    pub fn composite(self: *const Renderer) void {
         rl.beginDrawing();
         defer rl.endDrawing();
         rl.clearBackground(rl.Color.black);

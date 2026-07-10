@@ -535,7 +535,7 @@ pub fn main(init: std.process.Init) !void {
 
     rl.setTargetFPS(60);
 
-    var renderer = try Renderer.init();
+    const renderer = Renderer.init();
     defer renderer.deinit();
 
     while (!rl.windowShouldClose()) {

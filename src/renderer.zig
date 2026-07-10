@@ -26,7 +26,10 @@ pub const Renderer = struct {
 
         const res_val = [2]f32{ Screen.w, Screen.h }; // 800, 600 — the actual render target size
         rl.setShaderValue(crt_shader, res_loc, &res_val, rl.ShaderUniformDataType.vec2);
-        const render_target = try rl.loadRenderTexture(@intFromFloat(Screen.w), @intFromFloat(Screen.h));
+        const render_target = try rl.loadRenderTexture(
+            @intFromFloat(Screen.w),
+            @intFromFloat(Screen.h),
+        );
 
         rl.setTextureFilter(render_target.texture, rl.TextureFilter.point);
         return Renderer{
@@ -45,7 +48,12 @@ pub const Renderer = struct {
 
     pub fn beginScene(self: *Renderer) void {
         rl.beginTextureMode(self.render_target);
-        rl.clearBackground(rl.Color{ .r = 0, .g = 0, .b = 0, .a = 0 });
+        rl.clearBackground(rl.Color{
+            .r = 0,
+            .g = 0,
+            .b = 0,
+            .a = 0,
+        });
     }
 
     pub fn endScene(_: *Renderer) void {
@@ -60,8 +68,18 @@ pub const Renderer = struct {
         // background
         rl.drawTexturePro(
             self.bg_texture,
-            rl.Rectangle{ .x = 0, .y = 0, .width = @floatFromInt(self.bg_texture.width), .height = @floatFromInt(self.bg_texture.height) },
-            rl.Rectangle{ .x = 0, .y = 0, .width = Screen.w, .height = Screen.h },
+            rl.Rectangle{
+                .x = 0,
+                .y = 0,
+                .width = @floatFromInt(self.bg_texture.width),
+                .height = @floatFromInt(self.bg_texture.height),
+            },
+            rl.Rectangle{
+                .x = 0,
+                .y = 0,
+                .width = Screen.w,
+                .height = Screen.h,
+            },
             rl.Vector2{ .x = 0, .y = 0 },
             0,
             rl.Color.white,
@@ -69,15 +87,33 @@ pub const Renderer = struct {
 
         // CRT pass
         const t = @as(f32, @floatCast(rl.getTime()));
-        rl.setShaderValue(self.crt_shader, self.time_loc, &t, rl.ShaderUniformDataType.float);
+        rl.setShaderValue(
+            self.crt_shader,
+            self.time_loc,
+            &t,
+            rl.ShaderUniformDataType.float,
+        );
 
         rl.beginBlendMode(rl.BlendMode.alpha);
         rl.beginShaderMode(self.crt_shader);
         rl.drawTexturePro(
             self.render_target.texture,
-            rl.Rectangle{ .x = 0, .y = Screen.h, .width = Screen.w, .height = -Screen.h },
-            rl.Rectangle{ .x = Monitor.x, .y = Monitor.y, .width = Monitor.w, .height = Monitor.h },
-            rl.Vector2{ .x = 0, .y = 0 },
+            rl.Rectangle{
+                .x = 0,
+                .y = Screen.h,
+                .width = Screen.w,
+                .height = -Screen.h,
+            },
+            rl.Rectangle{
+                .x = Monitor.x,
+                .y = Monitor.y,
+                .width = Monitor.w,
+                .height = Monitor.h,
+            },
+            rl.Vector2{
+                .x = 0,
+                .y = 0,
+            },
             0,
             rl.Color.white,
         );

@@ -95,7 +95,7 @@ const Enemies = struct {
 
     fn init(rand: std.Random) Enemies {
         var g: Enemies = .{};
-        g.shoot_timer = rand.float(f32) * (enemy_shoot_max - enemy_shoot_min);
+        g.shoot_timer = enemy_shoot_min + rand.float(f32) * (enemy_shoot_max - enemy_shoot_min);
         for (0..enemy_max) |i| {
             const c: u8 = @intCast(i % enemy_cols);
             const r: u8 = @intCast(i / enemy_cols);

@@ -3,6 +3,7 @@ const highscore = @import("highscore.zig");
 
 const HighScore = highscore.HighScore;
 const HighScoreEntry = highscore.HighScoreEntry;
+const parseLine = highscore.parseLine;
 const max_entries = highscore.max_entries;
 
 fn createScore(score: usize) HighScoreEntry {
@@ -26,32 +27,41 @@ fn expectScores(hs: *const HighScore, expected: []const usize) !void {
     }
 }
 
+test "parseLine()" {
+    const hse = parseLine("100,1,12");
+    try std.testing.expectEqual(HighScoreEntry{
+        .score = 100,
+        .level = 1,
+        .lives = 12,
+    }, hse);
+}
+
 test "Higscore.add() adds a frst entry" {
-    var hs = HighScore.init();
+    var hs = HighScore.init(std.testing.io);
     addScores(&hs, &.{10});
     try expectScores(&hs, &.{10});
 }
 
 test "Highscore.add() adds a second entry with lower score" {
-    var hs = HighScore.init();
+    var hs = HighScore.init(std.testing.io);
     addScores(&hs, &.{ 10, 5 });
     try expectScores(&hs, &.{ 10, 5 });
 }
 
 test "Highscore.add() adds a second entry with higher score" {
-    var hs = HighScore.init();
+    var hs = HighScore.init(std.testing.io);
     addScores(&hs, &.{ 10, 20 });
     try expectScores(&hs, &.{ 20, 10 });
 }
 
 test "Highscore.add() adds several entries" {
-    var hs = HighScore.init();
+    var hs = HighScore.init(std.testing.io);
     addScores(&hs, &.{ 10, 20, 5, 100 });
     try expectScores(&hs, &.{ 100, 20, 10, 5 });
 }
 
 test "Highscore.add() push down" {
-    var hs = HighScore.init();
+    var hs = HighScore.init(std.testing.io);
     addScores(&hs, &.{ 100, 90, 80, 70, 60, 50, 40, 30, 20, 10, 75 });
     try expectScores(&hs, &.{ 100, 90, 80, 75, 70, 60, 50, 40, 30, 20 });
 }
@@ -62,7 +72,7 @@ test "HighScore.add() maintains invariants under random input" {
 
     // Run many independent random sequences.
     for (0..500) |_| {
-        var hs = HighScore.init();
+        var hs = HighScore.init(std.testing.io);
         var prev_count: usize = 0;
 
         // Each sequence adds a random number of random scores.

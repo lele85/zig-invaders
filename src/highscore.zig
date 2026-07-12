@@ -8,11 +8,34 @@ pub const HighScoreEntry = struct {
     lives: usize,
 };
 
+fn parseField(field: []const u8) usize {
+    return std.fmt.parseInt(usize, field, 10) catch |err| {
+        std.debug.panic("[FATAL ERROR] - Invalid high score field - {}", .{err});
+    };
+}
+
+pub fn parseLine(line: []const u8) HighScoreEntry {
+    var parts = std.mem.splitScalar(u8, line, ',');
+    const score_str = parts.next() orelse "";
+    const level_str = parts.next() orelse "";
+    const lives_str = parts.next() orelse "";
+
+    const score = parseField(score_str);
+    const level = parseField(level_str);
+    const lives = parseField(lives_str);
+
+    return HighScoreEntry{
+        .score = score,
+        .level = level,
+        .lives = lives,
+    };
+}
+
 pub const HighScore = struct {
     scores: [max_entries]HighScoreEntry,
     count: usize,
 
-    pub fn init() HighScore {
+    pub fn init(_: std.Io) HighScore {
         // TODO: Real implementation reading from disk
         return HighScore{
             .scores = undefined,
@@ -20,7 +43,7 @@ pub const HighScore = struct {
         };
     }
 
-    pub fn save(_: *const HighScore) void {
+    pub fn save(_: *const HighScore, _: std.Io) void {
         // TODO: Implement
         return;
     }

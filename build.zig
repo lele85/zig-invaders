@@ -116,6 +116,28 @@ pub fn build(b: *std.Build) void {
     // Lastly, the Zig build system is relatively simple and self-contained,
     // and reading its source code will allow you to master it.
 
+    // Unit tests. All test files are aggregated into src/tests.zig and built
+    // as a single test executable, so `zig build test` (and the resulting
+    // zig-out/bin/tests binary) runs everything in one place.
+    const test_step = b.step("test", "Run unit tests");
+
+    const tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/tests.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    // Installing the test binary means `zig build` also leaves a runnable
+    // executable behind (zig-out/bin/tests) instead of only the ephemeral
+    // cache artifact `addRunArtifact` would use.
+    const install_tests = b.addInstallArtifact(tests, .{
+        .dest_sub_path = "tests",
+    });
+    const run_tests = b.addRunArtifact(tests);
+    test_step.dependOn(&run_tests.step);
+    test_step.dependOn(&install_tests.step);
+
     // macOS .app bundle step
     const bundle_step = b.step("bundle", "Create macOS .app bundle");
 

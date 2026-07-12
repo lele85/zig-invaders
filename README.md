@@ -14,6 +14,12 @@ A Space Invaders clone built with [Zig](https://ziglang.org/) and [Raylib](https
 zig build run
 ```
 
+## Run unit tests
+
+```sh
+zig build test --summary all
+```
+
 ## Build
 
 ```sh

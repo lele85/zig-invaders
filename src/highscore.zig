@@ -1,8 +1,8 @@
 const std = @import("std");
 
-const max_entries = 10;
+pub const max_entries = 10;
 
-const HighScoreEntry = struct {
+pub const HighScoreEntry = struct {
     score: usize,
     level: usize,
     lives: usize,
@@ -54,54 +54,3 @@ pub const HighScore = struct {
         return;
     }
 };
-
-fn createScore(score: usize) HighScoreEntry {
-    return HighScoreEntry{
-        .level = 1,
-        .lives = 0,
-        .score = score,
-    };
-}
-
-fn addScores(hs: *HighScore, scores: []const usize) void {
-    for (scores) |score| {
-        hs.add(createScore(score));
-    }
-}
-
-fn expectScores(hs: *const HighScore, expected: []const usize) !void {
-    try std.testing.expectEqual(expected.len, hs.count);
-    for (expected, 0..) |score, idx| {
-        try std.testing.expectEqual(createScore(score), hs.scores[idx]);
-    }
-}
-
-test "Higscore.add() adds a frst entry" {
-    var hs = HighScore.init();
-    addScores(&hs, &.{10});
-    try expectScores(&hs, &.{10});
-}
-
-test "Highscore.add() adds a second entry with lower score" {
-    var hs = HighScore.init();
-    addScores(&hs, &.{ 10, 5 });
-    try expectScores(&hs, &.{ 10, 5 });
-}
-
-test "Highscore.add() adds a second entry with higher score" {
-    var hs = HighScore.init();
-    addScores(&hs, &.{ 10, 20 });
-    try expectScores(&hs, &.{ 20, 10 });
-}
-
-test "Highscore.add() adds several entries" {
-    var hs = HighScore.init();
-    addScores(&hs, &.{ 10, 20, 5, 100 });
-    try expectScores(&hs, &.{ 100, 20, 10, 5 });
-}
-
-test "Highscore.add() push down" {
-    var hs = HighScore.init();
-    addScores(&hs, &.{ 100, 90, 80, 70, 60, 50, 40, 30, 20, 10, 75 });
-    try expectScores(&hs, &.{ 100, 90, 80, 75, 70, 60, 50, 40, 30, 20 });
-}

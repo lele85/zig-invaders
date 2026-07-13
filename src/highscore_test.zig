@@ -27,13 +27,34 @@ fn expectScores(hs: *const HighScore, expected: []const usize) !void {
     }
 }
 
-test "parseLine()" {
-    const hse = parseLine("100,1,12");
+test "parseLine() should parse a correct line" {
+    const hse = try parseLine("100,1,12");
     try std.testing.expectEqual(HighScoreEntry{
         .score = 100,
         .level = 1,
         .lives = 12,
     }, hse);
+}
+
+test "parseLine() should throw an error when the line is not valid" {
+    try std.testing.expectError(
+        error.InvalidScoreLine,
+        parseLine("1,3"),
+    );
+}
+
+test "parseLine() should throw an error when the line is valid but a value is not" {
+    try std.testing.expectError(
+        error.InvalidCharacter,
+        parseLine("1,valid,3"),
+    );
+}
+
+test "parseLine() should throw an error when the line is valid but a value is overflowing" {
+    try std.testing.expectError(
+        error.Overflow,
+        parseLine("1,18446744073709551616,3"),
+    );
 }
 
 test "Higscore.add() adds a frst entry" {

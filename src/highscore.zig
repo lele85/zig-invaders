@@ -1,5 +1,5 @@
 const std = @import("std");
-
+const panic = std.debug.panic;
 pub const max_entries = 10;
 
 pub const HighScoreEntry = struct {
@@ -8,19 +8,15 @@ pub const HighScoreEntry = struct {
     lives: usize,
 };
 
-fn parseField(field: []const u8) !usize {
-    return std.fmt.parseInt(usize, field, 10);
-}
-
 pub fn parseLine(line: []const u8) !HighScoreEntry {
     var parts = std.mem.splitScalar(u8, line, ',');
     const score_str = parts.next() orelse return error.InvalidScoreLine;
     const level_str = parts.next() orelse return error.InvalidScoreLine;
     const lives_str = parts.next() orelse return error.InvalidScoreLine;
 
-    const score = try parseField(score_str);
-    const level = try parseField(level_str);
-    const lives = try parseField(lives_str);
+    const score = try std.fmt.parseInt(usize, score_str, 10);
+    const level = try std.fmt.parseInt(usize, level_str, 10);
+    const lives = try std.fmt.parseInt(usize, lives_str, 10);
 
     return HighScoreEntry{
         .score = score,
@@ -33,12 +29,43 @@ pub const HighScore = struct {
     scores: [max_entries]HighScoreEntry,
     count: usize,
 
-    pub fn init(_: std.Io) HighScore {
-        // TODO: Real implementation reading from disk
-        return HighScore{
+    pub fn init(io: std.Io, dir: std.Io.Dir) !HighScore {
+        var buffer: [1024]u8 = undefined;
+        const contents = dir.readFile(
+            io,
+            "highscores.txt",
+            &buffer,
+        ) catch |err| switch (err) {
+            error.FileNotFound => return HighScore{
+                .scores = undefined,
+                .count = 0,
+            },
+            else => return err,
+        };
+
+        var hs = HighScore{
             .scores = undefined,
             .count = 0,
         };
+        try hs.initFromContents(contents);
+        return hs;
+    }
+
+    /// Assumes `contents` was produced by `save()` — i.e. already sorted
+    /// descending and at most `max_entries` lines. Reading a hand-edited
+    /// or corrupted file may silently drop legitimate high scores past
+    /// the 10th line.
+    pub fn initFromContents(self: *HighScore, contents: []const u8) !void {
+        var lines = std.mem.splitScalar(
+            u8,
+            contents,
+            '\n',
+        );
+        while (lines.next()) |line| {
+            if (self.count >= max_entries) break;
+            self.add(try parseLine(line));
+        }
+        return;
     }
 
     pub fn save(_: *const HighScore, _: std.Io) void {
@@ -46,12 +73,12 @@ pub const HighScore = struct {
         return;
     }
 
-    pub fn add(hs: *HighScore, hse: HighScoreEntry) void {
+    pub fn add(self: *HighScore, hse: HighScoreEntry) void {
         // Find where the new entry belongs among the *existing* entries only.
         // Defaults to hs.count (i.e. "goes at the end") if nothing beats it.
-        var insert_idx: usize = hs.count;
-        for (0..hs.count) |idx| {
-            if (hse.score >= hs.scores[idx].score) {
+        var insert_idx: usize = self.count;
+        for (0..self.count) |idx| {
+            if (hse.score >= self.scores[idx].score) {
                 insert_idx = idx;
                 break;
             }
@@ -64,13 +91,13 @@ pub const HighScore = struct {
 
         // Shift everything from the last occupied slot down to insert_idx
         // one place to the right, dropping the last entry if we're full.
-        var i = @min(hs.count, max_entries - 1);
+        var i = @min(self.count, max_entries - 1);
         while (i > insert_idx) : (i -= 1) {
-            hs.scores[i] = hs.scores[i - 1];
+            self.scores[i] = self.scores[i - 1];
         }
 
-        hs.scores[insert_idx] = hse;
-        hs.count = @min(hs.count + 1, max_entries);
+        self.scores[insert_idx] = hse;
+        self.count = @min(self.count + 1, max_entries);
 
         return;
     }

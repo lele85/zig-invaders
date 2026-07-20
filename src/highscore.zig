@@ -1,6 +1,8 @@
 const std = @import("std");
 const panic = std.debug.panic;
 pub const max_entries = 10;
+const max_line_len = 62; // "usize_max,usize_max,usize_max" worst case
+const max_content_len = max_line_len * max_entries + (max_entries - 1);
 
 pub const HighScoreEntry = struct {
     score: usize,
@@ -97,8 +99,16 @@ pub const HighScore = struct {
         return;
     }
 
-    pub fn save(_: *const HighScore, _: std.Io) void {
-        // TODO: Implement
+    pub fn save(self: *const HighScore, io: std.Io, dir: std.Io.Dir) !void {
+        const entries = self.scores[0..self.count];
+
+        var content_buf: [max_content_len]u8 = undefined;
+        const content = try formatAll(entries, &content_buf);
+
+        try dir.writeFile(io, .{
+            .sub_path = "highscores.txt",
+            .data = content,
+        });
         return;
     }
 

@@ -339,6 +339,23 @@ test "init() propagates an error when a line is corrupted" {
     );
 }
 //#endregion
+//#region save()
+test "save() should persist the highscore on disk" {
+    var hs = HighScore{
+        .count = 0,
+        .scores = undefined,
+    };
+    hs.add(createScore(100));
+    hs.add(createScore(200));
+
+    var tmp = std.testing.tmpDir(.{});
+    defer tmp.cleanup();
+    try hs.save(std.testing.io, tmp.dir);
+    var buf: [128]u8 = undefined;
+    const contents = try tmp.dir.readFile(std.testing.io, "highscores.txt", &buf);
+    try std.testing.expectEqualStrings("200,1,0\n100,1,0", contents);
+}
+//#endregion
 //#endregion
 
 //#region Contract Tests
@@ -384,5 +401,47 @@ test "initFromContents() round-trips double entry via formatAll()" {
     try std.testing.expectEqual(2, hs.count);
     try std.testing.expectEqual(try parseLine("200,1,1"), hs.scores[0]);
     try std.testing.expectEqual(try parseLine("100,1,1"), hs.scores[1]);
+}
+
+test "save() should produce a format that init() is able to use" {
+    var hs = HighScore{
+        .count = 0,
+        .scores = undefined,
+    };
+    hs.add(createScore(100));
+    hs.add(createScore(200));
+
+    var tmp = std.testing.tmpDir(.{});
+    defer tmp.cleanup();
+    try hs.save(std.testing.io, tmp.dir);
+    var hs2 = try HighScore.init(std.testing.io, tmp.dir);
+    try expectScores(&hs2, &.{ 200, 100 });
+}
+
+test "save() persists an empty highscore correctly" {
+    var hs = HighScore{ .count = 0, .scores = undefined };
+
+    var tmp = std.testing.tmpDir(.{});
+    defer tmp.cleanup();
+    try hs.save(std.testing.io, tmp.dir);
+
+    const hs2 = try HighScore.init(std.testing.io, tmp.dir);
+    try std.testing.expectEqual(0, hs2.count);
+}
+
+test "save() overwrites a previous file rather than appending" {
+    var tmp = std.testing.tmpDir(.{});
+    defer tmp.cleanup();
+    try tmp.dir.writeFile(std.testing.io, .{
+        .sub_path = "highscores.txt",
+        .data = "999,1,1",
+    });
+
+    var hs = HighScore{ .count = 0, .scores = undefined };
+    hs.add(createScore(100));
+    try hs.save(std.testing.io, tmp.dir);
+
+    const hs2 = try HighScore.init(std.testing.io, tmp.dir);
+    try expectScores(&hs2, &.{100});
 }
 //#endregion

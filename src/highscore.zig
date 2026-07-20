@@ -25,6 +25,35 @@ pub fn parseLine(line: []const u8) !HighScoreEntry {
     };
 }
 
+pub fn formatEntry(hse: HighScoreEntry, buf: []u8) ![]u8 {
+    return std.fmt.bufPrint(buf, "{},{},{}", .{
+        hse.score,
+        hse.level,
+        hse.lives,
+    });
+}
+
+pub fn formatAll(entries: []const HighScoreEntry, buf: []u8) ![]u8 {
+    var offset: usize = 0;
+
+    for (entries, 0..) |hse, idx| {
+        if (idx > 0) {
+            if (offset >= buf.len) return error.NoSpaceLeft;
+            buf[offset] = '\n';
+            offset += 1;
+        }
+
+        var entry_buf: [64]u8 = undefined;
+        const line = try formatEntry(hse, &entry_buf);
+
+        if (offset + line.len > buf.len) return error.NoSpaceLeft;
+        std.mem.copyForwards(u8, buf[offset .. offset + line.len], line);
+        offset += line.len;
+    }
+
+    return buf[0..offset];
+}
+
 pub const HighScore = struct {
     scores: [max_entries]HighScoreEntry,
     count: usize,
@@ -52,9 +81,8 @@ pub const HighScore = struct {
     }
 
     /// Assumes `contents` was produced by `save()` — i.e. already sorted
-    /// descending and at most `max_entries` lines. Reading a hand-edited
-    /// or corrupted file may silently drop legitimate high scores past
-    /// the 10th line.
+    /// descending and at most `max_entries` lines. Blank lines are skipped.
+    /// Any other malformed line is a hard failure.
     pub fn initFromContents(self: *HighScore, contents: []const u8) !void {
         var lines = std.mem.splitScalar(
             u8,
@@ -63,6 +91,7 @@ pub const HighScore = struct {
         );
         while (lines.next()) |line| {
             if (self.count >= max_entries) break;
+            if (line.len == 0) continue;
             self.add(try parseLine(line));
         }
         return;

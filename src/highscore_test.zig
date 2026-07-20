@@ -1,12 +1,13 @@
+//#region Imports
 const std = @import("std");
 const highscore = @import("highscore.zig");
-
 const HighScore = highscore.HighScore;
 const HighScoreEntry = highscore.HighScoreEntry;
 const parseLine = highscore.parseLine;
 const formatEntry = highscore.formatEntry;
 const formatAll = highscore.formatAll;
 const max_entries = highscore.max_entries;
+//#endregion
 
 //#region Test Helpers
 fn createScore(score: usize) HighScoreEntry {

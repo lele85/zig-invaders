@@ -3,6 +3,7 @@ const panic = std.debug.panic;
 pub const max_entries = 10;
 const max_line_len = 62; // "usize_max,usize_max,usize_max" worst case
 const max_content_len = max_line_len * max_entries + (max_entries - 1);
+const save_path = "data/highscores.txt";
 
 pub const HighScoreEntry = struct {
     score: usize,
@@ -64,7 +65,7 @@ pub const HighScore = struct {
         var buffer: [1024]u8 = undefined;
         const contents = dir.readFile(
             io,
-            "highscores.txt",
+            save_path,
             &buffer,
         ) catch |err| switch (err) {
             error.FileNotFound => return HighScore{
@@ -100,13 +101,15 @@ pub const HighScore = struct {
     }
 
     pub fn save(self: *const HighScore, io: std.Io, dir: std.Io.Dir) !void {
+        try dir.createDirPath(io, "data");
+
         const entries = self.scores[0..self.count];
 
         var content_buf: [max_content_len]u8 = undefined;
         const content = try formatAll(entries, &content_buf);
 
         try dir.writeFile(io, .{
-            .sub_path = "highscores.txt",
+            .sub_path = save_path,
             .data = content,
         });
         return;

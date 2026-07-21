@@ -3,6 +3,8 @@ const std = @import("std");
 const Sounds = @import("sounds.zig").Sounds;
 const Renderer = @import("renderer.zig").Renderer;
 const Screen = @import("renderer.zig").Screen;
+const HighScore = @import("highscore.zig").HighScore;
+const HighScoreEntry = @import("highscore.zig").HighScoreEntry;
 const Pool = @import("utils.zig").Pool;
 const boundedArray = @import("utils.zig").boundedArray;
 
@@ -139,13 +141,15 @@ const LevelData = struct {
     lives: usize,
 };
 
+const HighScoreOrigin = enum { menu, game_over, win };
+
 const Scene = union(enum) {
     menu,
     level: LevelData,
     playing: PlayingState,
     game_over,
     win,
-    high_score,
+    high_score: HighScoreOrigin,
 };
 
 fn pointsForY(y: f32) usize {
@@ -424,23 +428,38 @@ fn getCenter(text: [:0]const u8, font: *const rl.Font) rl.Vector2 {
     };
 }
 
-fn drawHighScore(font: *const rl.Font) void {
-    const text =
+fn drawHighScore(hs: *const HighScore, font: *const rl.Font) void {
+    var buf: [2048]u8 = undefined;
+    var offset: usize = 0;
+
+    const header =
         \\+---------+-------+-------+
         \\| Level   | Score | Lives |
         \\+---------+-------+-------+
-        \\| 1       |  9999 |     3 |
-        \\| 2       |  8000 |     2 |
-        \\| 3       |  7500 |     2 |
-        \\| 4       |  6200 |     1 |
-        \\| 5       |  5100 |     1 |
-        \\| 6       |  4800 |     1 |
-        \\| 7       |  3300 |     0 |
-        \\| 8       |  2100 |     0 |
-        \\| 9       |  1500 |     0 |
-        \\| 10      |   900 |     0 |
-        \\+---------+-------+-------+
+        \\
     ;
+    @memcpy(buf[offset .. offset + header.len], header);
+    offset += header.len;
+
+    for (hs.scores[0..hs.count]) |entry| {
+        var line_buf: [64]u8 = undefined;
+        const line = std.fmt.bufPrint(&line_buf, "| {d:<7} | {d:>5} | {d:>5} |\n", .{
+            entry.level,
+            entry.score,
+            entry.lives,
+        }) catch break; // row too wide for line_buf; stop rendering further rows
+
+        @memcpy(buf[offset .. offset + line.len], line);
+        offset += line.len;
+    }
+
+    const footer = "+---------+-------+-------+";
+    @memcpy(buf[offset .. offset + footer.len], footer);
+    offset += footer.len;
+
+    buf[offset] = 0;
+    const text: [:0]const u8 = buf[0..offset :0];
+
     rl.drawTextEx(
         font.*,
         text,
@@ -497,6 +516,15 @@ fn drawStaticScreen(
     );
 }
 
+fn finishRun(hs: *HighScore, io: std.Io, ps: *const PlayingState) void {
+    hs.add(HighScoreEntry{
+        .score = ps.score,
+        .level = ps.level + 1,
+        .lives = ps.player.lives,
+    });
+    hs.save(io, std.Io.Dir.cwd()) catch {};
+}
+
 fn checkCollision(a: *const Rect, b: *const Rect) bool {
     // they don't overlap if any of these are true
     if (a.x > b.x + b.width) return false;
@@ -513,6 +541,12 @@ pub fn main(init: std.process.Init) !void {
         init.io.random(std.mem.asBytes(&seed));
         break :blk seed;
     });
+
+    var hs = HighScore.init(init.io, std.Io.Dir.cwd()) catch HighScore{
+        .scores = undefined,
+        .count = 0,
+    };
+
     const rand = prng.random();
     var scene: Scene = .menu;
 
@@ -547,6 +581,8 @@ pub fn main(init: std.process.Init) !void {
                         .score = 0,
                         .lives = 3,
                     } };
+                } else if (rl.isKeyPressed(rl.KeyboardKey.tab)) {
+                    scene = .{ .high_score = .menu };
                 }
             },
             .level => |level_data| {
@@ -568,6 +604,7 @@ pub fn main(init: std.process.Init) !void {
                     }
                 }
                 if (invaded or ps.player.lives == 0) {
+                    finishRun(&hs, init.io, ps);
                     scene = .game_over;
                     continue;
                 }
@@ -584,6 +621,7 @@ pub fn main(init: std.process.Init) !void {
                     continue;
                 }
                 if (ps.enemies.count == 0) {
+                    finishRun(&hs, init.io, ps);
                     scene = .win;
                     continue;
                 }
@@ -595,16 +633,37 @@ pub fn main(init: std.process.Init) !void {
                 const stepped = updateHeartbeat(ps, dt, sounds);
                 updateEnemies(ps, stepped);
             },
-            .game_over, .win => {
+            .game_over => {
                 if (rl.isKeyPressed(rl.KeyboardKey.enter)) {
                     scene = .{ .level = .{
                         .level = 0,
                         .score = 0,
                         .lives = 3,
                     } };
+                } else if (rl.isKeyPressed(rl.KeyboardKey.tab)) {
+                    scene = .{ .high_score = .game_over };
                 }
             },
-            .high_score => {},
+            .win => {
+                if (rl.isKeyPressed(rl.KeyboardKey.enter)) {
+                    scene = .{ .level = .{
+                        .level = 0,
+                        .score = 0,
+                        .lives = 3,
+                    } };
+                } else if (rl.isKeyPressed(rl.KeyboardKey.tab)) {
+                    scene = .{ .high_score = .win };
+                }
+            },
+            .high_score => |origin| {
+                if (rl.isKeyPressed(rl.KeyboardKey.tab)) {
+                    scene = switch (origin) {
+                        .game_over => .game_over,
+                        .win => .win,
+                        .menu => .menu,
+                    };
+                }
+            },
         }
 
         renderer.beginScene();
@@ -646,7 +705,7 @@ pub fn main(init: std.process.Init) !void {
                 );
             },
             .high_score => {
-                drawHighScore(&font);
+                drawHighScore(&hs, &font);
             },
         }
         renderer.endScene();

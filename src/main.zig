@@ -54,6 +54,7 @@ const Typography = struct {
 };
 
 const typo = struct {
+    const small = Typography{ .size = 24, .line = 28 };
     const base = Typography{ .size = 28, .line = 36 };
     const xxl = Typography{ .size = 56, .line = 64 };
 };
@@ -473,6 +474,7 @@ fn drawHighScore(hs: *const HighScore, font: *const rl.Font) void {
 fn drawStaticScreen(
     title: [:0]const u8,
     subtitle: [:0]const u8,
+    subtitle2: [:0]const u8,
     font: *const rl.Font,
 ) void {
     // center title
@@ -488,8 +490,14 @@ fn drawStaticScreen(
         typo.base.size,
         4,
     ).x;
+    const subtitle2_w = rl.measureTextEx(
+        font.*,
+        subtitle2,
+        typo.small.size,
+        4,
+    ).x;
 
-    const block_h = typo.xxl.line + typo.base.line;
+    const block_h = typo.xxl.line + typo.base.line + typo.small.line;
     const block_y = (Screen.h - block_h) / 2;
 
     rl.drawTextEx(
@@ -511,6 +519,17 @@ fn drawStaticScreen(
             .y = block_y + typo.xxl.line,
         },
         typo.base.size,
+        4,
+        rl.Color.green,
+    );
+    rl.drawTextEx(
+        font.*,
+        subtitle2,
+        rl.Vector2{
+            .x = (Screen.w - subtitle2_w) / 2,
+            .y = block_y + typo.xxl.line + typo.base.line,
+        },
+        typo.small.size,
         4,
         rl.Color.green,
     );
@@ -672,6 +691,7 @@ pub fn main(init: std.process.Init) !void {
                 drawStaticScreen(
                     "ZIG INVADERS",
                     "Press Enter to START",
+                    "TAB for High Score",
                     &font,
                 );
             },
@@ -680,6 +700,7 @@ pub fn main(init: std.process.Init) !void {
                 drawStaticScreen(
                     rl.textFormat("Level %d", .{next_level}),
                     "Press Enter to START",
+                    "",
                     &font,
                 );
             },
@@ -694,6 +715,7 @@ pub fn main(init: std.process.Init) !void {
                 drawStaticScreen(
                     "GAME OVER",
                     "Press Enter to RESTART",
+                    "TAB for High Score",
                     &font,
                 );
             },
@@ -701,6 +723,7 @@ pub fn main(init: std.process.Init) !void {
                 drawStaticScreen(
                     "YOU WIN",
                     "Press Enter to RESTART",
+                    "TAB for High Score",
                     &font,
                 );
             },

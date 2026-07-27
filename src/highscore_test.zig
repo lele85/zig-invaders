@@ -305,10 +305,11 @@ test "init() returns empty HighScore when file is missing" {
 test "init() loads and sorts scores from an existing file" {
     var tmp = std.testing.tmpDir(.{});
     defer tmp.cleanup();
+    try tmp.dir.createDirPath(std.testing.io, "data");
     try tmp.dir.writeFile(
         std.testing.io,
         .{
-            .sub_path = "highscores.txt",
+            .sub_path = "data/highscores.txt",
             .data = "100,1,1\n200,1,1",
         },
     );
@@ -322,10 +323,11 @@ test "init() loads and sorts scores from an existing file" {
 test "init() propagates an error when a line is corrupted" {
     var tmp = std.testing.tmpDir(.{});
     defer tmp.cleanup();
+    try tmp.dir.createDirPath(std.testing.io, "data");
     try tmp.dir.writeFile(
         std.testing.io,
         .{
-            .sub_path = "highscores.txt",
+            .sub_path = "data/highscores.txt",
             .data = "100,1,1\nnot,a,valid,line",
         },
     );
@@ -352,7 +354,7 @@ test "save() should persist the highscore on disk" {
     defer tmp.cleanup();
     try hs.save(std.testing.io, tmp.dir);
     var buf: [128]u8 = undefined;
-    const contents = try tmp.dir.readFile(std.testing.io, "highscores.txt", &buf);
+    const contents = try tmp.dir.readFile(std.testing.io, "data/highscores.txt", &buf);
     try std.testing.expectEqualStrings("200,1,0\n100,1,0", contents);
 }
 //#endregion
@@ -432,8 +434,9 @@ test "save() persists an empty highscore correctly" {
 test "save() overwrites a previous file rather than appending" {
     var tmp = std.testing.tmpDir(.{});
     defer tmp.cleanup();
+    try tmp.dir.createDirPath(std.testing.io, "data");
     try tmp.dir.writeFile(std.testing.io, .{
-        .sub_path = "highscores.txt",
+        .sub_path = "data/highscores.txt",
         .data = "999,1,1",
     });
 
